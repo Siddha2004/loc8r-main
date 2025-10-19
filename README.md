@@ -1,6 +1,6 @@
-# Loc8r - Location-Based Application
+# Welcome to Loc8r
 
-Welcome to Loc8r, a location-based application built with the MEAN stack (MongoDB, Express, Angular/React, Node.js).
+A location-based application built with the MEAN stack (MongoDB, Express, Angular/React, Node.js).
 
 ## Features
 
