@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import AddPlaceForm from '@/components/AddPlaceForm';
+import PlaceDetails from '@/components/PlaceDetails';
+import { fetchPlaces, createPlace } from '@/utils/api';
+import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Place {
   _id: string;
@@ -25,12 +30,15 @@ interface Place {
 }
 
 const Loc8r = () => {
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [places, setPlaces] = useState<Place[]>([]);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [searchRadius, setSearchRadius] = useState<number>(1000);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   // Get user location
   useEffect(() => {
@@ -53,26 +61,18 @@ const Loc8r = () => {
   // Fetch places when location is available
   useEffect(() => {
     if (userLocation) {
-      fetchPlaces();
+      fetchPlacesData();
     }
   }, [userLocation, searchRadius]);
 
-  const fetchPlaces = async () => {
+  const fetchPlacesData = async () => {
     if (!userLocation) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(
-        `/api/places?lng=${userLocation[0]}&lat=${userLocation[1]}&maxDistance=${searchRadius}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch places');
-      }
-      
-      const data = await response.json();
+      const data = await fetchPlaces(userLocation[0], userLocation[1], searchRadius);
       setPlaces(data);
     } catch (err) {
       setError('Failed to load places. Please try again later.');
@@ -84,30 +84,42 @@ const Loc8r = () => {
 
   const handleAddPlace = async (placeData: Omit<Place, '_id'>) => {
     try {
-      const response = await fetch('/api/places', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...placeData,
-          coords: {
-            type: 'Point',
-            coordinates: userLocation || [0, 0]
-          }
-        }),
-      });
+      const newPlaceData = {
+        ...placeData,
+        coords: {
+          type: 'Point',
+          coordinates: userLocation || [0, 0]
+        }
+      };
       
-      if (!response.ok) {
-        throw new Error('Failed to add place');
-      }
-      
-      const newPlace = await response.json();
+      const newPlace = await createPlace(newPlaceData);
       setPlaces(prev => [newPlace, ...prev]);
       setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Place added successfully!",
+      });
     } catch (err) {
       console.error('Error adding place:', err);
+      toast({
+        title: "Error",
+        description: "Failed to add place. Please try again.",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleCancelAddPlace = () => {
+    setIsAddDialogOpen(false);
+  };
+
+  const handlePlaceClick = (place: Place) => {
+    setSelectedPlace(place);
+  };
+
+  const closePlaceDetails = () => {
+    setSelectedPlace(null);
   };
 
   const getFacilityIcon = (facility: string) => {
@@ -158,7 +170,7 @@ const Loc8r = () => {
               <DialogHeader>
                 <DialogTitle>Add New Place</DialogTitle>
               </DialogHeader>
-              <AddPlaceForm onSubmit={handleAddPlace} />
+              <AddPlaceForm onSubmit={handleAddPlace} onCancel={handleCancelAddPlace} />
             </DialogContent>
           </Dialog>
         </div>
@@ -177,7 +189,11 @@ const Loc8r = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {places.map((place) => (
-            <Card key={place._id} className="hover:shadow-lg transition-shadow">
+            <Card 
+              key={place._id} 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => handlePlaceClick(place)}
+            >
               <CardHeader>
                 <CardTitle className="flex justify-between items-start">
                   <span>{place.name}</span>
@@ -229,6 +245,25 @@ const Loc8r = () => {
             Try increasing the search radius or add a new place
           </p>
         </div>
+      )}
+
+      {/* Place Details Modal/Drawer */}
+      {selectedPlace && (
+        isMobile ? (
+          <Drawer open={!!selectedPlace} onOpenChange={(open) => !open && closePlaceDetails()}>
+            <DrawerContent>
+              <div className="p-4">
+                <PlaceDetails place={selectedPlace} onClose={closePlaceDetails} />
+              </div>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && closePlaceDetails()}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <PlaceDetails place={selectedPlace} onClose={closePlaceDetails} />
+            </DialogContent>
+          </Dialog>
+        )
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 
 interface PlaceFormData {
   name: string;
@@ -20,9 +21,11 @@ interface PlaceFormData {
 
 interface AddPlaceFormProps {
   onSubmit: (data: Omit<PlaceFormData, '_id'>) => void;
+  onCancel: () => void;
 }
 
-const AddPlaceForm = ({ onSubmit }: AddPlaceFormProps) => {
+const AddPlaceForm = ({ onSubmit, onCancel }: AddPlaceFormProps) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<PlaceFormData>({
     name: '',
     address: '',
@@ -77,6 +80,26 @@ const AddPlaceForm = ({ onSubmit }: AddPlaceFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!formData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Place name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!formData.address.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Address is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     onSubmit(formData);
   };
 
@@ -85,7 +108,7 @@ const AddPlaceForm = ({ onSubmit }: AddPlaceFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="name">Place Name</Label>
+        <Label htmlFor="name">Place Name *</Label>
         <Input
           id="name"
           name="name"
@@ -96,7 +119,7 @@ const AddPlaceForm = ({ onSubmit }: AddPlaceFormProps) => {
       </div>
 
       <div>
-        <Label htmlFor="address">Address</Label>
+        <Label htmlFor="address">Address *</Label>
         <Textarea
           id="address"
           name="address"
@@ -189,9 +212,14 @@ const AddPlaceForm = ({ onSubmit }: AddPlaceFormProps) => {
         </Button>
       </div>
 
-      <Button type="submit" className="w-full">
-        Add Place
-      </Button>
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          Add Place
+        </Button>
+      </div>
     </form>
   );
 };

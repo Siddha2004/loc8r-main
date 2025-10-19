@@ -33,7 +33,7 @@ const placeSchema = new mongoose.Schema({
   }]
 });
 
-const Place = mongoose.model('Place', placeSchema);
+export const Place = mongoose.model('Place', placeSchema);
 
 // Routes
 app.get('/api/places', async (req, res) => {
